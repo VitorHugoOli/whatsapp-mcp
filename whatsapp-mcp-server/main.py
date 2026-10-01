@@ -78,10 +78,16 @@ PreviewDimension = Annotated[
 
 @mcp.tool()
 def search_contacts(query: str) -> list[dict[str, Any]]:
-    """Search WhatsApp contacts by name or phone number.
+    """Search WhatsApp contacts by name, phone number, or WhatsApp lid.
+
+    Phone numbers match regardless of spaces/dashes, whether the country
+    code (55) or area code (DDD) is included, and regardless of the extra
+    "9" prefix some Brazilian mobile numbers have. Two different contacts
+    can share the same name, so check the phone_number/jid/lid in each
+    result before assuming which one is meant.
 
     Args:
-        query: Search term to match against contact names or phone numbers
+        query: Search term to match against contact names, phone numbers, or lids
     """
     contacts = whatsapp_search_contacts(query)
     return contacts
@@ -276,7 +282,10 @@ def get_chat(chat_jid: str, include_last_message: bool = True) -> dict[str, Any]
 
 @mcp.tool()
 def get_direct_chat_by_contact(sender_phone_number: str) -> dict[str, Any]:
-    """Get WhatsApp chat metadata by sender phone number.
+    """Get the WhatsApp direct chat with a contact by phone number.
+
+    The number matches regardless of spaces/dashes, whether the country code
+    (55) or area code (DDD) is included, and the extra "9" of Brazilian mobiles.
 
     Args:
         sender_phone_number: The phone number to search for

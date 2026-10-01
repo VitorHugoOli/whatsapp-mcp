@@ -133,7 +133,9 @@ Messages include `sender_display` showing "Name (phone)" format for easy identif
 
 #### `search_contacts`
 
-Search contacts by name or phone number.
+Search contacts by name or phone number. Phone numbers match regardless of
+formatting, country code, area code, or the extra "9" of Brazilian mobiles,
+and `@lid` contacts are found by their real phone number.
 
 **Parameters:**
 
