@@ -8,6 +8,7 @@ from mcp.server.fastmcp import FastMCP, Image
 from pydantic import Field
 
 import media_preview
+import scheduling
 import transcription
 from mcp_config import resolve_host, resolve_port, resolve_transport
 from parent_watchdog import install_stdio_parent_watchdog
@@ -376,6 +377,54 @@ def send_message(
         recipient, message, quoted_message_id, quoted_sender_jid, quoted_content, mentions
     )
     return {"success": success, "message": status_message}
+
+
+@mcp.tool()
+def schedule_message(recipient: str, message: str, send_at: str) -> dict[str, Any]:
+    """Schedule a WhatsApp text message to be sent later by the bridge.
+
+    Each chat has its own queue: messages to the same chat are always sent in
+    send_at order (ties keep scheduling order), and a message never goes out
+    before an earlier one in its chat, even while that one is being retried.
+    A message that keeps failing is marked failed and holds back the rest of
+    its chat's queue until it is cancelled with cancel_scheduled_message.
+
+    Args:
+        recipient: Phone number (any common format) or JID of a person or group
+        message: The message text to send
+        send_at: When to send, ISO 8601 (e.g. "2026-10-01T18:30"). Without a UTC
+                 offset it is taken as the local time of this machine.
+
+    Returns:
+        Success status, a status message and the scheduled entry (with its id)
+    """
+    return scheduling.schedule_message(recipient, message, send_at)
+
+
+@mcp.tool()
+def list_scheduled_messages(chat: str | None = None, include_finished: bool = False) -> list[dict[str, Any]]:
+    """List the queues of scheduled WhatsApp messages, grouped by chat in send order.
+
+    Each active entry has queue_position (1 = next to be sent in its chat) and
+    blocked (true when it, or an earlier entry in the same chat, failed).
+
+    Args:
+        chat: Only this chat's queue - a phone number (any common format) or JID
+        include_finished: Also include sent and cancelled messages
+    """
+    return scheduling.list_scheduled_messages(chat, include_finished)
+
+
+@mcp.tool()
+def cancel_scheduled_message(schedule_id: int) -> dict[str, Any]:
+    """Cancel a pending or failed scheduled message by its id.
+
+    Cancelling a failed message unblocks the rest of its chat's queue.
+
+    Args:
+        schedule_id: The id returned by schedule_message or list_scheduled_messages
+    """
+    return scheduling.cancel_scheduled_message(schedule_id)
 
 
 @mcp.tool()
