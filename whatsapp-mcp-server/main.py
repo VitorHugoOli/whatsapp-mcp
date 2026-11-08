@@ -7,6 +7,7 @@ from typing import Annotated, Any
 from mcp.server.fastmcp import FastMCP, Image
 from pydantic import Field
 
+import chat_lists
 import media_preview
 import scheduling
 import transcription
@@ -425,6 +426,79 @@ def cancel_scheduled_message(schedule_id: int) -> dict[str, Any]:
         schedule_id: The id returned by schedule_message or list_scheduled_messages
     """
     return scheduling.cancel_scheduled_message(schedule_id)
+
+
+@mcp.tool()
+def list_chat_lists() -> list[dict[str, Any]]:
+    """List the WhatsApp chat lists (the filters above the chat list: Favorites,
+    Unread, Groups and the user's custom lists), with id, name, type and chat_count.
+
+    Custom lists have type "custom"; only those can be edited.
+    """
+    return chat_lists.list_chat_lists()
+
+
+@mcp.tool()
+def sync_chat_lists() -> dict[str, Any]:
+    """Re-read every WhatsApp chat list and membership from WhatsApp.
+
+    The bridge already does this when it connects (at most every 10 minutes);
+    use it when a list was changed on the phone a moment ago and does not show
+    the change yet. Changes nothing on WhatsApp.
+    """
+    return chat_lists.sync_chat_lists()
+
+
+@mcp.tool()
+def get_chat_list(list: str) -> dict[str, Any]:
+    """Show one WhatsApp chat list and the chats in it.
+
+    Each chat has jid (phone JID when known), phone, name, is_group and
+    list_jid (the id WhatsApp itself stores, usually an @lid).
+
+    Args:
+        list: The list id, or its name (case and accents ignored), e.g. "Família"
+    """
+    try:
+        return chat_lists.get_chat_list(list)
+    except chat_lists.ChatListError as e:
+        return {"success": False, "message": str(e)}
+
+
+@mcp.tool()
+def add_chat_to_list(list: str, chat: str) -> dict[str, Any]:
+    """Add a chat to one of the user's custom WhatsApp lists.
+
+    This changes the user's WhatsApp: the chat shows up in that list on their phone and
+    every linked device. Only do it when the user asked for it. Adding a chat that is
+    already in the list changes nothing.
+
+    Args:
+        list: The list id, or its name (case and accents ignored), e.g. "Família"
+        chat: Phone number (any common format) or JID of a person or group
+    """
+    try:
+        return chat_lists.add_chat_to_list(list, chat)
+    except chat_lists.ChatListError as e:
+        return {"success": False, "message": str(e)}
+
+
+@mcp.tool()
+def remove_chat_from_list(list: str, chat: str) -> dict[str, Any]:
+    """Remove a chat from one of the user's custom WhatsApp lists.
+
+    This changes the user's WhatsApp: the chat leaves that list on their phone and every
+    linked device (the chat itself and its messages are kept). Only do it when
+    the user asked for it. Removing a chat that is not in the list changes nothing.
+
+    Args:
+        list: The list id, or its name (case and accents ignored), e.g. "Família"
+        chat: Phone number (any common format) or JID of a person or group
+    """
+    try:
+        return chat_lists.remove_chat_from_list(list, chat)
+    except chat_lists.ChatListError as e:
+        return {"success": False, "message": str(e)}
 
 
 @mcp.tool()
