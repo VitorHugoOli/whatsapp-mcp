@@ -399,6 +399,47 @@ Each active entry has `queue_position` and `blocked`.
 
 Cancelling a failed message unblocks its chat's queue.
 
+### Chat Lists
+
+WhatsApp's lists (the filters above the chat list: Favorites, Unread, Groups
+and your own custom lists) sync between devices as app state *labels*. The
+bridge stores them in `messages.db` (`labels`, `label_chats`) from app state
+events, so reads work while the bridge is down. The bridge runs a full sync
+when it connects (at most every 10 minutes); since whatsmeow only dispatches
+SET mutations, that sync is also what retires lists and memberships removed
+on another device.
+
+Adding or removing a chat changes the user's WhatsApp on every device. Only
+custom lists can be edited; people are written by their LID (how WhatsApp
+stores every person in a list), groups by their JID. Both operations are
+idempotent.
+
+#### `list_chat_lists`
+
+Lists with `id`, `name`, `type` (`custom`, `favorites`, `unread`, `groups`, …)
+and `chat_count`.
+
+#### `sync_chat_lists`
+
+Re-reads every list and membership from WhatsApp now (changes nothing there).
+
+#### `get_chat_list`
+
+- `list` (required): List id, or its name (case, then accents, ignored)
+
+Returns the list and its chats (`jid`, `phone`, `name`, `is_group`, `list_jid`).
+
+#### `add_chat_to_list` / `remove_chat_from_list`
+
+- `list` (required): List id or name
+- `chat` (required): Phone number or JID of a person or group. A number is matched
+  to an existing chat; without one it must include the country code, and a number
+  matching several contacts is refused.
+
+Bridge endpoints: `GET /api/lists`, `POST /api/lists/sync`,
+`GET /api/lists/{id}/chats`, `POST /api/lists/{id}/chats` (`{"chat": ...}`),
+`DELETE /api/lists/{id}/chats/{chat}`.
+
 ### Chat Operations
 
 All chat tools (`list_chats`, `get_chat`, `get_direct_chat_by_contact`,

@@ -129,6 +129,7 @@ When adding a new env var: document it here, in `README.md`, and in `.env.exampl
 4. **History sync** is controlled by the *primary* device (the phone). The bridge can request more at pair time (see the `--full-history-pair` flag) or for a single chat at runtime (`POST /api/history`, see `history_ondemand.go`), but the phone has the final word.
 5. **`messages.db` is the source of truth for the MCP server.** Don't make the MCP server dependent on the bridge being up for *read* operations.
 6. **Outgoing calls are not visible to linked devices.** Don't promise features that depend on them.
+7. **Chat lists are app state labels.** Full app state syncs only emit events because the bridge sets `EmitAppStateEventsOnFullSync`; list memberships of people use `@lid` JIDs, groups `@g.us`. Only custom lists are editable.
 
 ## Where to make changes
 
@@ -137,6 +138,7 @@ When adding a new env var: document it here, in `README.md`, and in `.env.exampl
 | Add or modify an MCP tool | `whatsapp-mcp-server/main.py` |
 | Change DB queries / data conversion | `whatsapp-mcp-server/whatsapp.py` |
 | Change bridge REST API or event handling | `whatsapp-bridge/main.go` |
+| Change chat lists (app state labels) | `whatsapp-bridge/chat_lists.go`, `whatsapp-mcp-server/chat_lists.py` |
 | Change webhook payload | `whatsapp-bridge/webhook.go` |
 | Change CI behavior | `.github/workflows/*.yml` |
 | Change release behavior | `release-please-config.json`, `.release-please-manifest.json` |
