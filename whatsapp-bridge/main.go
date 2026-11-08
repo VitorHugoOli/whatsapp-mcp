@@ -298,6 +298,9 @@ func ensureMessageStoreSchema(db *sql.DB) error {
 	if err := ensureScheduledMessagesTable(db); err != nil {
 		return fmt.Errorf("failed to ensure scheduled_messages table: %w", err)
 	}
+	if err := ensureChatListTables(db); err != nil {
+		return fmt.Errorf("failed to ensure chat list tables: %w", err)
+	}
 	return nil
 }
 
@@ -2410,6 +2413,7 @@ func newRESTMux(client *whatsmeow.Client, messageStore *MessageStore, port int, 
 	// On-demand history sync endpoint (see history_ondemand.go)
 	registerHistoryEndpoint(mux, auth, client, messageStore)
 	registerScheduleEndpoints(mux, auth, newScheduler(client, messageStore))
+	registerChatListEndpoints(mux, auth, newChatListDeps(client, messageStore))
 
 	// Health check endpoint
 	mux.HandleFunc("/api/health", auth(func(w http.ResponseWriter, r *http.Request) {
@@ -2959,6 +2963,9 @@ func main() {
 
 	// Create client instance
 	client := whatsmeow.NewClient(deviceStore, logger)
+	// A full app state sync (pairing, POST /api/lists/sync) only emits events
+	// with this on; the chat lists are stored from those events.
+	client.EmitAppStateEventsOnFullSync = true
 	if client == nil {
 		logger.Errorf("Failed to create WhatsApp client")
 		return
@@ -3027,6 +3034,10 @@ func main() {
 
 	// Setup event handling for messages and history sync
 	client.AddEventHandler(func(evt interface{}) {
+		// Chat lists (app state labels), see chat_lists.go.
+		if handleChatListEvent(messageStore, evt) {
+			return
+		}
 		switch v := evt.(type) {
 		case *events.Message:
 			// Process regular messages
@@ -3116,6 +3127,7 @@ func main() {
 
 		case *events.Connected:
 			logger.Infof("✓ Successfully connected to WhatsApp servers")
+			syncChatListsOnConnect(client, messageStore)
 
 		case *events.LoggedOut:
 			logger.Warnf("⚠️  Device logged out, please scan QR code to log in again")
