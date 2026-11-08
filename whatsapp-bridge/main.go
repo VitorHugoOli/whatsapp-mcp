@@ -1522,6 +1522,17 @@ func sendWhatsAppMessage(client *whatsmeow.Client, messageStore *MessageStore, r
 				FileSHA256:    upload.FileSHA256,
 				FileLength:    &upload.FileLength,
 			}
+			// Without the size, clients show the image cropped to a square.
+			// An image we cannot read is still sent, just without them.
+			if meta, err := imageMetadata(mediaData); err != nil {
+				fmt.Printf("Warning: could not read image size, sending without it: %v\n", err)
+			} else {
+				msg.ImageMessage.Width = proto.Uint32(meta.Width)
+				msg.ImageMessage.Height = proto.Uint32(meta.Height)
+				if len(meta.Thumbnail) > 0 {
+					msg.ImageMessage.JPEGThumbnail = meta.Thumbnail
+				}
+			}
 		case whatsmeow.MediaAudio:
 			// Handle ogg audio files
 			var seconds uint32 = 30 // Default fallback
